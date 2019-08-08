@@ -66,50 +66,38 @@ public class FileChooser extends CordovaPlugin {
 
     @Override
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
-
-        if (requestCode == PICK_FILE_REQUEST && callback != null) {
-
-            if (resultCode == Activity.RESULT_OK) {
-
-                ClipData clipData = data.getClipData();
-                JSONArray savedUris = new JSONArray();
-
-                if (clipData != null) {
-                    final int clipDataCount = clipData.getItemCount();
-                    if(clipDataCount > 0) {
-                        for (int i = 0; i < clipDataCount; i++) {
-                            ClipData.Item item = clipData.getItemAt(i);
-                            Uri uri = item.getUri();
-
-                            if (uri != null) {
-                                Log.w(TAG, uri.toString());
-                                savedUris.put(checkUri(uri));
-                            }
+        if (!(requestCode == PICK_FILE_REQUEST && callback != null)) { return; }
+        if (resultCode == Activity.RESULT_OK) {
+            ClipData clipData = data.getClipData();
+            JSONArray savedUris = new JSONArray();
+            if (clipData != null) {
+                final int clipDataCount = clipData.getItemCount();
+                if(clipDataCount > 0) {
+                    for (int i = 0; i < clipDataCount; i++) {
+                        ClipData.Item item = clipData.getItemAt(i);
+                        Uri uri = item.getUri();
+                        if (uri != null) {
+                            Log.w(TAG, uri.toString());
+                            savedUris.put(checkUri(uri));
                         }
                     }
-                } else {
-                    Uri uri = data.getData();
-                    if (uri != null) {
-
-                        Log.w(TAG, uri.toString());
-                        savedUris.put(checkUri(uri));
-
-                    } else {
-
-                        callback.error("File uri was null");
-
-                    }
                 }
-                callback.success(savedUris.toString());
-
-            } else if (resultCode == Activity.RESULT_CANCELED) {
-                // keep this string the same as in iOS document picker plugin
-                // https://github.com/iampossible/Cordova-DocPicker
-                callback.error("User canceled.");
             } else {
-
-                callback.error(resultCode);
+                Uri uri = data.getData();
+                if (uri != null) {
+                    Log.w(TAG, uri.toString());
+                    savedUris.put(checkUri(uri));
+                } else {
+                    callback.error("File uri was null");
+                }
             }
+            callback.success(savedUris.toString());
+        } else if (resultCode == Activity.RESULT_CANCELED) {
+            // keep this string the same as in iOS document picker plugin
+            // https://github.com/iampossible/Cordova-DocPicker
+            callback.error("User canceled.");
+        } else {
+            callback.error(resultCode);
         }
     }
 
@@ -135,23 +123,17 @@ public class FileChooser extends CordovaPlugin {
                     returnCursor.close();
                 }
             }
-
             String sourcePath = context.getExternalFilesDir(null).toString();
-
             try {
                 if (filename != null) {
                     File savedFile = new File(sourcePath + "/" + filename);
-
                     copyFileStream(savedFile, uri, context);
-
                     return savedFile.toURI().toString();
                 }
                 return uri.toString();
-
             } catch (Exception e) {
                 Log.w(TAG, e.getMessage());
             }
-
         } catch (Exception e) {
             Log.w(TAG, e.getMessage());
         }
@@ -159,18 +141,14 @@ public class FileChooser extends CordovaPlugin {
     }
 
     private static int indexOfLastSeparator(String filename) {
-        if (filename == null) {
-            return -1;
-        }
+        if (filename == null) { return -1; }
         int lastUnixPos = filename.lastIndexOf('/');
         int lastWindowsPos = filename.lastIndexOf('\\');
         return Math.max(lastUnixPos, lastWindowsPos);
     }
 
     private static String getName(String filename) {
-        if (filename == null) {
-            return null;
-        }
+        if (filename == null) { return null; }
         int index = indexOfLastSeparator(filename);
         return filename.substring(index + 1);
     }
@@ -183,20 +161,14 @@ public class FileChooser extends CordovaPlugin {
             os = new java.io.FileOutputStream(dest);
             byte[] buffer = new byte[1024];
             int length;
-
             while ((length = is.read(buffer)) > 0) {
                 os.write(buffer, 0, length);
-
             }
         } catch (Exception e) {
             e.printStackTrace();
         } finally {
-            if (is != null) {
-                is.close();
-            }
-            if (os != null) {
-                os.close();
-            }
+            if (is != null) { is.close(); }
+            if (os != null) { os.close(); }
         }
     }
 
@@ -208,7 +180,6 @@ public class FileChooser extends CordovaPlugin {
                 final String docId = DocumentsContract.getDocumentId(uri);
                 final String[] split = docId.split(":");
                 final String type = split[0];
-
                 if ("primary".equalsIgnoreCase(type)) {
                     return Environment.getExternalStorageDirectory() + "/" + split[1];
                 }
@@ -221,14 +192,11 @@ public class FileChooser extends CordovaPlugin {
                         "content://downloads/my_downloads",
                         "content://downloads/all_downloads"
                 };
-
                 for (String contentUriPrefix : contentUriPrefixesToTry) {
                     Uri contentUri = ContentUris.withAppendedId(Uri.parse(contentUriPrefix), Long.valueOf(id));
                     try {
                         String path = getDataColumn(context, contentUri, null, null);
-                        if (path != null) {
-                            return path;
-                        }
+                        if (path != null) { return path; }
                     } catch (Exception e) {
                         Log.w(TAG, e.getMessage());
                     }
