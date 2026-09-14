@@ -68,30 +68,34 @@ public class FileChooser extends CordovaPlugin {
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
         if (!(requestCode == PICK_FILE_REQUEST && callback != null)) { return; }
         if (resultCode == Activity.RESULT_OK) {
-            ClipData clipData = data.getClipData();
-            JSONArray savedUris = new JSONArray();
-            if (clipData != null) {
-                final int clipDataCount = clipData.getItemCount();
-                if(clipDataCount > 0) {
-                    for (int i = 0; i < clipDataCount; i++) {
-                        ClipData.Item item = clipData.getItemAt(i);
-                        Uri uri = item.getUri();
-                        if (uri != null) {
-                            Log.w(TAG, uri.toString());
-                            savedUris.put(checkUri(uri));
+            final CallbackContext resultCallback = callback;
+            cordova.getThreadPool().execute(() -> {
+                ClipData clipData = data.getClipData();
+                JSONArray savedUris = new JSONArray();
+                if (clipData != null) {
+                    final int clipDataCount = clipData.getItemCount();
+                    if(clipDataCount > 0) {
+                        for (int i = 0; i < clipDataCount; i++) {
+                            ClipData.Item item = clipData.getItemAt(i);
+                            Uri uri = item.getUri();
+                            if (uri != null) {
+                                Log.w(TAG, uri.toString());
+                                savedUris.put(checkUri(uri));
+                            }
                         }
                     }
-                }
-            } else {
-                Uri uri = data.getData();
-                if (uri != null) {
-                    Log.w(TAG, uri.toString());
-                    savedUris.put(checkUri(uri));
                 } else {
-                    callback.error("File uri was null");
+                    Uri uri = data.getData();
+                    if (uri != null) {
+                        Log.w(TAG, uri.toString());
+                        savedUris.put(checkUri(uri));
+                    } else {
+                        resultCallback.error("File uri was null");
+                        return;
+                    }
                 }
-            }
-            callback.success(savedUris.toString());
+                resultCallback.success(savedUris.toString());
+            });
         } else if (resultCode == Activity.RESULT_CANCELED) {
             // keep this string the same as in iOS document picker plugin
             // https://github.com/iampossible/Cordova-DocPicker
@@ -126,6 +130,7 @@ public class FileChooser extends CordovaPlugin {
             String sourcePath = context.getExternalFilesDir(null).toString();
             try {
                 if (filename != null) {
+                    filename = new File(filename).getName();
                     File savedFile = new File(sourcePath + "/" + filename);
                     copyFileStream(savedFile, uri, context);
                     return savedFile.toURI().toString();
@@ -159,7 +164,7 @@ public class FileChooser extends CordovaPlugin {
         try {
             is = context.getContentResolver().openInputStream(uri);
             os = new java.io.FileOutputStream(dest);
-            byte[] buffer = new byte[1024];
+            byte[] buffer = new byte[64 * 1024];
             int length;
             while ((length = is.read(buffer)) > 0) {
                 os.write(buffer, 0, length);
